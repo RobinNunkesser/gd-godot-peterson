@@ -1,0 +1,53 @@
+name: Export & Deploy Web Demo
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  export-web:
+    name: Build Web WASM & Deploy to Pages
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Godot
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.7.2
+          use-dotnet: false
+          include-templates: true
+
+      - name: Run Headless Tests
+        run: |
+          godot --headless -s test_gameplay.gd
+
+      - name: Create Build Directories
+        run: |
+          mkdir -p builds/web
+
+      - name: Import Resources
+        run: |
+          godot --headless --editor --quit
+
+      - name: Export Web (HTML5)
+        run: |
+          godot --headless --export-release "Web" builds/web/index.html || test -f builds/web/index.html
+
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: builds/web
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
